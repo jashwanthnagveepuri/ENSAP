@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Phase 1: GET /api/sites search/filter is by status and region
+         (docs/10-api-design.md pagination & filtering). -->
+    <changeSet id="002-01-index-site-status" author="ensap-phase1">
+        <createIndex tableName="site" indexName="idx_site_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="002-02-index-site-region" author="ensap-phase1">
+        <createIndex tableName="site" indexName="idx_site_region">
+            <column name="region"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

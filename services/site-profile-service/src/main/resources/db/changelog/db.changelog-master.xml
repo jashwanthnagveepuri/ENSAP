@@ -9,4 +9,7 @@
          Phase 0: schema only, no seed data. -->
     <include file="db/changelog/001-site-profile-tables.xml" relativeToChangelogFile="false"/>
 
+    <!-- Phase 1: search/filter indexes (docs/10-api-design.md). -->
+    <include file="db/changelog/002-site-search-indexes.xml" relativeToChangelogFile="false"/>
+
 </databaseChangeLog>
