@@ -1,0 +1,53 @@
+name: CI
+
+# PR pipeline (master spec §28): compile + unit test every service and the
+# frontend. Static analysis, dependency/security scanning, container
+# build/scan, and the main-branch deploy pipeline are Phase 11 work — not
+# implemented yet (docs/14-deployment.md).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - site-profile-service
+          - deployment-service
+          - evidence-audit-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: services/${{ matrix.service }}/pom.xml
+      - name: Build & test
+        working-directory: services/${{ matrix.service }}
+        run: ./mvnw -B verify
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+      - name: Test
+        working-directory: frontend
+        run: npm test
