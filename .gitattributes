@@ -1,0 +1,23 @@
+# Normalize line endings: store text as LF in the repo, check out native.
+* text=auto eol=lf
+
+# Explicit text types
+*.java   text
+*.ts     text
+*.tsx    text
+*.xml    text
+*.yml    text
+*.yaml   text
+*.json   text
+*.md     text
+*.properties text
+Dockerfile text
+mvnw     text eol=lf
+*.cmd    text eol=crlf
+
+# Binary — never touch
+*.jar    binary
+*.class  binary
+*.png    binary
+*.jpg    binary
+*.ico    binary
