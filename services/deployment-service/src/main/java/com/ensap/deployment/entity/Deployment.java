@@ -8,8 +8,9 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * Maps the {@code deployment} table (docs/09-database-design.md). Phase 0:
- * schema shape only — no repository/service logic reads or writes this yet.
+ * Maps the {@code deployment} table (docs/09-database-design.md). Status is
+ * one of the {@code DeploymentStatus} values (master spec §37 Phase 2):
+ * REQUESTED, RUNNING, COMPLETED, FAILED, FAILED_REQUIRES_ATTENTION, CANCELLED.
  */
 @Entity
 @Table(name = "deployment")
@@ -29,6 +30,9 @@ public class Deployment {
 
     @Column(name = "idempotency_key")
     private String idempotencyKey;
+
+    @Column(name = "workflow_instance_id")
+    private String workflowInstanceId;
 
     @Column(name = "requested_by")
     private String requestedBy;
@@ -77,6 +81,14 @@ public class Deployment {
 
     public void setIdempotencyKey(String idempotencyKey) {
         this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getWorkflowInstanceId() {
+        return workflowInstanceId;
+    }
+
+    public void setWorkflowInstanceId(String workflowInstanceId) {
+        this.workflowInstanceId = workflowInstanceId;
     }
 
     public String getRequestedBy() {
