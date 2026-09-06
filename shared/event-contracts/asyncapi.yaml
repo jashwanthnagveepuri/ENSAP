@@ -1,0 +1,161 @@
+asyncapi: 2.6.0
+info:
+  title: ENSAP Event Catalog
+  version: "0.1.0"
+  description: >
+    Domain events published/consumed across ENSAP services and workers.
+    See docs/11-event-catalog.md for the narrative version and Kafka
+    partitioning rules. Nothing in this repository publishes or consumes
+    these yet (Phase 3+) — this document fixes the contract shape ahead
+    of implementation.
+defaultContentType: application/json
+
+servers:
+  local:
+    url: localhost:9092
+    protocol: kafka
+    description: Local single-broker Kafka (KRaft mode), via docker-compose.
+
+channels:
+  ensap.site.events:
+    description: Site profile lifecycle events. Partitioned by siteId.
+    subscribe:
+      summary: Site profile created or refreshed.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/SiteProfileCreated'
+          - $ref: '#/components/messages/SiteProfileRefreshed'
+
+  ensap.deployment.events:
+    description: Deployment lifecycle events. Partitioned by siteId.
+    subscribe:
+      summary: Deployment lifecycle transitions.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/DeploymentRequested'
+          - $ref: '#/components/messages/DeploymentStarted'
+          - $ref: '#/components/messages/DeploymentValidationCompleted'
+          - $ref: '#/components/messages/DeploymentValidationFailed'
+          - $ref: '#/components/messages/DeploymentCompleted'
+          - $ref: '#/components/messages/DeploymentFailed'
+          - $ref: '#/components/messages/DeploymentRetryRequested'
+
+  ensap.router.events:
+    description: Router provisioning command/result events. Partitioned by siteId.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: '#/components/messages/RouterProvisioningRequested'
+          - $ref: '#/components/messages/RouterProvisioningCompleted'
+          - $ref: '#/components/messages/RouterProvisioningFailed'
+
+  ensap.switch.events:
+    description: Switch provisioning command/result events. Partitioned by siteId.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: '#/components/messages/SwitchProvisioningRequested'
+          - $ref: '#/components/messages/SwitchProvisioningCompleted'
+          - $ref: '#/components/messages/SwitchProvisioningFailed'
+
+  ensap.wireless.events:
+    description: Wireless provisioning command/result events. Partitioned by siteId.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: '#/components/messages/WirelessProvisioningRequested'
+          - $ref: '#/components/messages/WirelessProvisioningCompleted'
+          - $ref: '#/components/messages/WirelessProvisioningFailed'
+
+  ensap.firewall.events:
+    description: Firewall provisioning command/result events. Partitioned by siteId.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: '#/components/messages/FirewallProvisioningRequested'
+          - $ref: '#/components/messages/FirewallProvisioningCompleted'
+          - $ref: '#/components/messages/FirewallProvisioningFailed'
+
+  ensap.ticketing.events:
+    description: Ticketing provider result events. Partitioned by siteId.
+    subscribe:
+      message:
+        oneOf:
+          - $ref: '#/components/messages/TicketingRequested'
+          - $ref: '#/components/messages/TicketingCompleted'
+
+components:
+  schemas:
+    EventEnvelope:
+      $ref: './schemas/event-envelope.schema.json'
+
+  messages:
+    SiteProfileCreated:
+      name: site.profile.created
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    SiteProfileRefreshed:
+      name: site.profile.refreshed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentRequested:
+      name: deployment.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentStarted:
+      name: deployment.started
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentValidationCompleted:
+      name: deployment.validation.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentValidationFailed:
+      name: deployment.validation.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentCompleted:
+      name: deployment.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentFailed:
+      name: deployment.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentRetryRequested:
+      name: deployment.retry.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    RouterProvisioningRequested:
+      name: router.provisioning.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    RouterProvisioningCompleted:
+      name: router.provisioning.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    RouterProvisioningFailed:
+      name: router.provisioning.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    SwitchProvisioningRequested:
+      name: switch.provisioning.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    SwitchProvisioningCompleted:
+      name: switch.provisioning.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    SwitchProvisioningFailed:
+      name: switch.provisioning.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    WirelessProvisioningRequested:
+      name: wireless.provisioning.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    WirelessProvisioningCompleted:
+      name: wireless.provisioning.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    WirelessProvisioningFailed:
+      name: wireless.provisioning.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    FirewallProvisioningRequested:
+      name: firewall.provisioning.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    FirewallProvisioningCompleted:
+      name: firewall.provisioning.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    FirewallProvisioningFailed:
+      name: firewall.provisioning.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    TicketingRequested:
+      name: ticketing.requested
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    TicketingCompleted:
+      name: ticketing.completed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }

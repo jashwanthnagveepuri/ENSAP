@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ensap.example/schemas/event-envelope.schema.json",
+  "title": "ENSAP Event Envelope",
+  "description": "Common envelope for every ENSAP domain event (master spec §10). eventType-specific payloads are defined separately and referenced by eventType+eventVersion.",
+  "type": "object",
+  "required": ["eventId", "eventType", "eventVersion", "occurredAt", "correlationId", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "type": "string", "examples": ["router.provisioning.requested"] },
+    "eventVersion": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "traceId": { "type": "string" },
+    "siteId": { "type": "string" },
+    "deploymentId": { "type": "string" },
+    "payload": { "type": "object" }
+  },
+  "additionalProperties": false
+}
