@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Phase 2: correlate a deployment with its Camunda process instance
+         (workflow/camunda/deployment-process.bpmn). -->
+    <changeSet id="002-01-add-deployment-workflow-instance-id" author="ensap-phase2">
+        <addColumn tableName="deployment">
+            <column name="workflow_instance_id" type="varchar(64)"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Ordering/lookup support for deployment_step; (deployment_id, step_name)
+         must be unique so retry re-uses the same tracking row instead of
+         inserting a duplicate for the step it's re-attempting. -->
+    <changeSet id="002-02-deployment-step-constraints" author="ensap-phase2">
+        <addUniqueConstraint tableName="deployment_step"
+                              columnNames="deployment_id, step_name"
+                              constraintName="uq_deployment_step_name"/>
+    </changeSet>
+
+    <!-- Filtering/listing support (GET /api/deployments?status=&siteId=). -->
+    <changeSet id="002-03-deployment-indexes" author="ensap-phase2">
+        <createIndex tableName="deployment" indexName="ix_deployment_site_id">
+            <column name="site_id"/>
+        </createIndex>
+        <createIndex tableName="deployment" indexName="ix_deployment_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- master spec §12/§13: worker-side idempotency for individual
+         operations (e.g. "DEP-001:ROUTER:PROVISION"), keyed by operationId
+         with a uniqueness constraint via primary key. Schema only in Phase 2
+         — no writer yet, the same way outbox_event has no publisher yet;
+         Phase 4 job workers populate/consult this. -->
+    <changeSet id="002-04-create-processed-operation" author="ensap-phase2">
+        <createTable tableName="processed_operation">
+            <column name="operation_id" type="varchar(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deployment_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_processed_operation_deployment" references="deployment(id)"/>
+            </column>
+            <column name="step_name" type="varchar(64)"/>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="timestamptz"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
