@@ -100,7 +100,8 @@ class SiteServiceTest {
     void searchSites_appliesPagingAndMapsContent() {
         Site site = site("SITE-001");
         Page<Site> page = new PageImpl<>(List.of(site));
-        when(siteRepository.findAll(any(Specification.class), any())).thenReturn(page);
+        when(siteRepository.findAll(any(Specification.class), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
 
         StepVerifier.create(siteService.searchSites("ACTIVE", null, null, 0, 20))
                 .assertNext(result -> {
