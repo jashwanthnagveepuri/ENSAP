@@ -19,7 +19,7 @@ import java.time.Instant;
 public class IdempotencyKeyRecord {
 
     @Id
-    @Column(name = "key")
+    @Column(name = "`key`") // backtick-quoted: "key" is a reserved word in H2 (used by the Phase 0 smoke-test profile)
     private String key;
 
     @Column(name = "deployment_id", nullable = false)

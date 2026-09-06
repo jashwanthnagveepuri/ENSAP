@@ -1,7 +1,10 @@
 package com.ensap.deployment.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 /**
@@ -10,6 +13,8 @@ import reactor.core.publisher.Mono;
  * instanceof chain in each handler method.
  */
 public final class ErrorMapper {
+
+    private static final Logger log = LoggerFactory.getLogger(ErrorMapper.class);
 
     private ErrorMapper() {
     }
@@ -31,10 +36,15 @@ public final class ErrorMapper {
         } else if (ex instanceof IllegalArgumentException) {
             status = 400;
             code = "BAD_REQUEST";
+        } else if (ex instanceof ResponseStatusException rse) {
+            // e.g. wrong Content-Type or malformed body, raised by the framework before our code runs.
+            status = rse.getStatusCode().value();
+            code = "BAD_REQUEST";
         } else {
             status = 500;
             code = "INTERNAL_ERROR";
             message = "Unexpected error";
+            log.error("Unhandled exception (correlationId={})", correlationId, ex);
         }
 
         return ServerResponse.status(status)
