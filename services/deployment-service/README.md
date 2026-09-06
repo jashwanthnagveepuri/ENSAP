@@ -1,11 +1,55 @@
 # deployment-service
 
-Owns deployment/batch/step lifecycle, idempotency keys, and the outbox
-(`../../docs/06-component-design.md`). Business logic (idempotent
-create, Camunda `deployment-process` orchestration, retry/cancel) lands
-in **Phase 2/5** (`../../docs/02-functional-requirements.md`, FR-2) —
-today every endpoint returns `501 Not Implemented` with the shared
-error shape.
+Owns deployment/batch/step lifecycle and idempotency keys
+(`../../docs/06-component-design.md`). **Phase 2 done**: a deployment
+can be created (idempotently) and tracked through a basic Camunda 8
+workflow (master spec §37).
+
+## What's implemented (Phase 2)
+
+- `POST /api/deployments` — idempotent create. A repeated
+  `Idempotency-Key` returns the original deployment (`200`) instead of
+  a duplicate (`201` for a new one); race-safe via the
+  `idempotency_key` table's primary key, not locking.
+- `GET /api/deployments` (paginated, `status`/`siteId` filter),
+  `GET /api/deployments/{id}`.
+- `POST /{id}/retry` (only from `FAILED`/`FAILED_REQUIRES_ATTENTION`,
+  `409` otherwise) and `POST /{id}/cancel` (`409` from a terminal
+  state) — both re-run the same Camunda start/cancel path.
+- Deployment state machine: `REQUESTED → RUNNING → COMPLETED`, or
+  `→ FAILED` (escalating to `FAILED_REQUIRES_ATTENTION` after 3 failed
+  attempts) / `→ CANCELLED`. Tracked via one `deployment_step` row
+  (`camunda-workflow-start`) per deployment.
+- Camunda 8: `ZeebeClient` (`io.camunda:zeebe-client-java:8.5.9`,
+  matching the broker image in `infrastructure/docker/docker-compose.yml`),
+  deploys `deployment-process.bpmn` on startup and starts/cancels
+  process instances. **Provider job workers are Phase 4** — with no
+  worker consuming the BPMN's service tasks, a started deployment's
+  process instance sits at `Task_ValidateSite` indefinitely. That's
+  expected for Phase 2, not a bug.
+
+### What's intentionally not done here
+
+- **No live-broker requirement.** `deployment.camunda.enabled=false`
+  (or the broker simply being unreachable) makes `WorkflowService`
+  return a documented `DISABLED`/`ERROR` outcome instead of failing
+  the request — the deployment stays `REQUESTED` (disabled) or moves
+  to `FAILED`/`FAILED_REQUIRES_ATTENTION` (a real, retryable error).
+  The IT suite runs with Camunda disabled (Testcontainers Postgres
+  only, no Zeebe testcontainer) — that path is design-verified, not
+  faked: `STARTED`/`ERROR` outcomes are covered with a mocked
+  `WorkflowService` in `DeploymentServiceTest`; `DISABLED` end-to-end
+  in `DeploymentEndToEndIT`.
+- **`common-observability` not adopted.** It isn't installed to the
+  local Maven repo by this service's own build (no reactor/multi-module
+  parent ties the two together yet), so depending on it would make
+  `./mvnw verify` fail here unless `shared/common-observability` was
+  built first out-of-band — the same reason `site-profile-service`
+  (the Phase 1 reference) doesn't consume it either. Revisit once a
+  root aggregator POM (or a published/installed artifact) exists.
+- **`processed_operation` table is schema-only**, same status as
+  `outbox_event` — Phase 4 job workers populate/consult it for
+  per-operation idempotency (master spec §12).
 
 ## Run locally
 
@@ -13,8 +57,12 @@ error shape.
 ./mvnw spring-boot:run
 ```
 
-Requires PostgreSQL reachable at `SPRING_DATASOURCE_URL` (defaults to
-`localhost:5432/ensap`, matching `infrastructure/docker/docker-compose.yml`).
+Requires PostgreSQL at `SPRING_DATASOURCE_URL` (defaults to
+`localhost:5432/ensap`) and, for real Camunda integration, a Zeebe
+broker at `ZEEBE_GATEWAY_ADDRESS` (defaults to `localhost:26500`;
+`docker compose up -d postgres zeebe operate` from
+`infrastructure/docker/`). Without a broker the service still starts
+and serves requests — see "What's intentionally not done here" above.
 
 ## Build & test
 
@@ -22,8 +70,10 @@ Requires PostgreSQL reachable at `SPRING_DATASOURCE_URL` (defaults to
 ./mvnw -q verify
 ```
 
-Runs the Phase 0 Spring context smoke test against an in-memory H2
-database (`src/test/resources/application-test.yml`).
+Runs the Phase 0 H2 context-load smoke test, `DeploymentServiceTest`
+(Mockito unit tests), and `DeploymentEndToEndIT` (Testcontainers
+Postgres, via `maven-failsafe-plugin` — without it `*IT` classes
+silently never run).
 
 ## API contract
 
@@ -33,4 +83,7 @@ database (`src/test/resources/application-test.yml`).
 
 Functional endpoints per master spec §31/§32 — see
 `../../docs/06-component-design.md` for the shared layering across all
-three services.
+three services. `workflow/` wraps the Zeebe client
+(`WorkflowService`, `ZeebeConfig`, `WorkflowResourceDeployer`); the
+packaged copy of `workflow/camunda/deployment-process.bpmn` lives at
+`src/main/resources/camunda/` so it deploys from the built jar.

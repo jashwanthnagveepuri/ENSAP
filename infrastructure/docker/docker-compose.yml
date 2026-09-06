@@ -6,7 +6,8 @@
 # refresh (location-service, inventory-service, network-service); provider-mock,
 # the router/switch/wireless/firewall/ticketing provider mock ecosystem
 # (mocks/provider-mock/README.md, master spec §22); and
-# deployment-service/evidence-audit-service, still Phase 0 501-stub shells.
+# deployment-service (Phase 2: deployment lifecycle, idempotency, Camunda
+# workflow — see its README); evidence-audit-service, still a Phase 0 501-stub shell.
 #
 # Commented out below: workers/* (Phase 4) and frontend (Phase 1).
 #
@@ -129,9 +130,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ensap
       SPRING_DATASOURCE_USERNAME: ensap
       SPRING_DATASOURCE_PASSWORD: ensap_dev_only
+      ZEEBE_GATEWAY_ADDRESS: zeebe:26500
     depends_on:
       postgres:
         condition: service_healthy
+      zeebe:
+        condition: service_started
 
   evidence-audit-service:
     build:
