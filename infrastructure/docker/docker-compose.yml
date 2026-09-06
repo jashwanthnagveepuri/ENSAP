@@ -2,18 +2,19 @@
 #
 # Live today: postgres, redis, kafka, zeebe, operate; site-profile-service
 # (Phase 1: real site/device/network-profile CRUD+search+refresh, see its
-# README) plus the three Phase 1 mock source systems it reconciles against
-# on refresh (location-service, inventory-service, network-service); and
+# README); the three Phase 1 mock source systems it reconciles against on
+# refresh (location-service, inventory-service, network-service); provider-mock,
+# the router/switch/wireless/firewall/ticketing provider mock ecosystem
+# (mocks/provider-mock/README.md, master spec §22); and
 # deployment-service/evidence-audit-service, still Phase 0 501-stub shells.
 #
-# Commented out below: provider mocks (router/switch/wireless/firewall/
-# ticketing), workers/*, and frontend — Phase 4/1 respectively.
+# Commented out below: workers/* (Phase 4) and frontend (Phase 1).
 #
 # No AWS credentials are required to run any of this (master spec §2.3).
 #
 # Usage:
 #   docker compose up -d postgres redis kafka zeebe operate
-#   docker compose up -d --build location-service inventory-service network-service
+#   docker compose up -d --build location-service inventory-service network-service provider-mock
 #   docker compose up -d --build site-profile-service deployment-service evidence-audit-service
 
 name: ensap
@@ -145,7 +146,18 @@ services:
       postgres:
         condition: service_healthy
 
-  # --- Not yet built (Phase 1: frontend; Phase 4: provider mocks/workers) --
+  # One configurable WebFlux app mocking all five infrastructure provider
+  # APIs by path (master spec §22) — router/switch/wireless/firewall/
+  # ticketing — with a runtime-controllable behavior admin API at
+  # /admin/providers/{providerType} (backs the frontend's Provider
+  # Simulation page). See mocks/provider-mock/README.md.
+  provider-mock:
+    build:
+      context: ../../mocks/provider-mock
+    ports:
+      - "8090:8080"
+
+  # --- Not yet built (Phase 1: frontend; Phase 4: workers) -----------
   #
   # frontend:
   #   build:
@@ -153,11 +165,8 @@ services:
   #   ports:
   #     - "5173:80"
   #
-  # router-provider / switch-provider / wireless-provider / firewall-provider
-  # / ticketing-provider (mocks/*): each a tiny HTTP mock with a
-  #   configurable-behavior admin endpoint (docs/06-component-design.md,
-  #   master spec §22) — added in Phase 4. location-service/inventory-service/
-  #   network-service (the Phase 1 source-of-truth mocks) are live above.
+  # All provider mocks (mocks/provider-mock, master spec §22) and the
+  # source-system mocks (location/inventory/network-service) are live above.
   #
   # router-worker / switch-worker / wireless-worker / firewall-worker /
   # ticketing-worker (workers/*):
