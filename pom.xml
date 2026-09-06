@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.ensap</groupId>
+  <artifactId>ensap-reactor</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>ensap-reactor</name>
+  <description>ENSAP aggregator/reactor POM (master spec §37 Phase 3). Pure aggregator — it is
+    NOT the Maven &lt;parent&gt; of any module below, so every module keeps building standalone via
+    its own mvnw exactly as before. Its only job is to let `mvn install` here build every module in
+    dependency order in one shot, which is what lets deployment-service and evidence-audit-service
+    resolve the shared/event-contracts dependency without a separate manual install step.</description>
+
+  <modules>
+    <module>shared/event-contracts</module>
+    <module>shared/common-observability</module>
+    <module>services/site-profile-service</module>
+    <module>services/deployment-service</module>
+    <module>services/evidence-audit-service</module>
+    <module>mocks/location-service</module>
+    <module>mocks/inventory-service</module>
+    <module>mocks/network-service</module>
+    <module>mocks/provider-mock</module>
+  </modules>
+</project>
