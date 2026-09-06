@@ -1,17 +1,39 @@
 /**
- * Placeholder API client. Phase 0: no backend calls are wired up yet —
- * each page adds its own fetch calls against the relevant service
- * (docs/10-api-design.md) as it's implemented. Centralized here only to
- * fix the base-URL/correlation-header convention ahead of time.
+ * Shared fetch helper for all service clients (docs/10-api-design.md error
+ * model + pagination envelope). Each service (site-profile, deployment) has
+ * its own base URL and its own typed client in this directory; this file
+ * only fixes the request/error/pagination conventions common to all of them.
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string,
+    public correlationId?: string,
+  ) {
+    super(message)
+  }
+}
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(`${BASE_URL}${path}`, {
+export interface Page<T> {
+  content: T[]
+  page: number
+  size: number
+  totalElements: number
+}
+
+export async function apiFetch<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
   })
+  const text = await res.text()
+  const body = text ? JSON.parse(text) : undefined
+  if (!res.ok) {
+    throw new ApiError(res.status, body?.code ?? 'UNKNOWN', body?.message ?? res.statusText, body?.correlationId)
+  }
+  return body as T
 }
