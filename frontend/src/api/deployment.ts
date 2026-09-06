@@ -11,21 +11,37 @@ import { apiFetch, type Page } from './client'
 const BASE_URL = import.meta.env.VITE_DEPLOYMENT_API_BASE_URL ?? 'http://localhost:8082'
 
 export type DeploymentStatus =
-  | 'PENDING'
-  | 'IN_PROGRESS'
-  | 'SUCCEEDED'
+  | 'REQUESTED'
+  | 'RUNNING'
+  | 'COMPLETED'
   | 'FAILED'
   | 'FAILED_REQUIRES_ATTENTION'
   | 'CANCELLED'
 
-export const TERMINAL_STATUSES: DeploymentStatus[] = ['SUCCEEDED', 'FAILED', 'FAILED_REQUIRES_ATTENTION', 'CANCELLED']
+export const TERMINAL_STATUSES: DeploymentStatus[] = ['COMPLETED', 'FAILED', 'FAILED_REQUIRES_ATTENTION', 'CANCELLED']
+
+export type DeploymentStepStatus = 'PENDING' | 'COMPLETED' | 'FAILED'
+
+export interface DeploymentStep {
+  id: string
+  stepName: string
+  status: DeploymentStepStatus
+  attemptCount: number
+  lastError: string | null
+  startedAt: string | null
+  completedAt: string | null
+}
 
 export interface Deployment {
   id: string
   siteId: string
+  batchId?: string | null
   status: DeploymentStatus
+  workflowInstanceId?: string | null
+  requestedBy?: string | null
   createdAt: string
   updatedAt: string
+  steps?: DeploymentStep[]
 }
 
 export interface DeploymentSearchParams {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listDeployments, type Deployment, type DeploymentStatus } from '../../api/deployment'
 
-const STATUSES: DeploymentStatus[] = ['PENDING', 'IN_PROGRESS', 'SUCCEEDED', 'FAILED', 'FAILED_REQUIRES_ATTENTION', 'CANCELLED']
+const STATUSES: DeploymentStatus[] = ['REQUESTED', 'RUNNING', 'COMPLETED', 'FAILED', 'FAILED_REQUIRES_ATTENTION', 'CANCELLED']
 const PAGE_SIZE = 20
 
 export default function DeploymentHistory() {

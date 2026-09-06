@@ -19,7 +19,7 @@ function renderPage() {
 
 describe('StartDeployment', () => {
   it('navigates to the progress page once the deployment is created', async () => {
-    vi.mocked(createDeployment).mockResolvedValue({ id: 'DEP-1', siteId: 'SITE-1', status: 'PENDING', createdAt: 'now', updatedAt: 'now' })
+    vi.mocked(createDeployment).mockResolvedValue({ id: 'DEP-1', siteId: 'SITE-1', status: 'REQUESTED', createdAt: 'now', updatedAt: 'now' })
 
     renderPage()
     fireEvent.change(screen.getByLabelText('Site ID'), { target: { value: 'SITE-1' } })

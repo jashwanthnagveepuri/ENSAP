@@ -9,7 +9,7 @@ vi.mock('../../../src/api/deployment')
 describe('DeploymentHistory', () => {
   it('lists deployments with a link to their progress page', async () => {
     vi.mocked(listDeployments).mockResolvedValue({
-      content: [{ id: 'DEP-1', siteId: 'SITE-1', status: 'IN_PROGRESS', createdAt: 'now', updatedAt: 'now' }],
+      content: [{ id: 'DEP-1', siteId: 'SITE-1', status: 'RUNNING', createdAt: 'now', updatedAt: 'now' }],
       page: 0,
       size: 20,
       totalElements: 1,
