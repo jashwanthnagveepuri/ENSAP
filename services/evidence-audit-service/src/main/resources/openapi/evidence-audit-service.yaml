@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: ENSAP Evidence/Audit Service
+  version: "0.1.0"
+  description: >
+    Owns deployment evidence and audit events (docs/06-component-design.md).
+    Phase 0: contract only — handlers return 501 until Phase 2 implements
+    the behavior.
+servers:
+  - url: http://localhost:8083
+
+paths:
+  /api/deployments/{deploymentId}/evidence:
+    get:
+      summary: List evidence for a deployment
+      operationId: listEvidence
+      parameters:
+        - name: deploymentId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Evidence entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Evidence' }
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/audit-events:
+    get:
+      summary: List/search audit events
+      operationId: listAuditEvents
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: deploymentId
+          in: query
+          schema: { type: string }
+        - name: siteId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Page of audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditEvent' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+components:
+  schemas:
+    Evidence:
+      type: object
+      properties:
+        id: { type: string }
+        deploymentId: { type: string }
+        stepName: { type: string }
+        s3Key: { type: string }
+        contentType: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string }
+        deploymentId: { type: string }
+        siteId: { type: string }
+        actor: { type: string }
+        eventType: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ApiError:
+      type: object
+      description: docs/10-api-design.md error model
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }
+
+  responses:
+    NotImplemented:
+      description: Phase 0 scaffold stub
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }

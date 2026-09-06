@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-01-create-deployment-evidence" author="ensap-phase0">
+        <createTable tableName="deployment_evidence">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deployment_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="step_name" type="varchar(64)"/>
+            <column name="s3_key" type="varchar(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content_type" type="varchar(128)"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-02-create-audit-event" author="ensap-phase0">
+        <createTable tableName="audit_event">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deployment_id" type="varchar(64)"/>
+            <column name="site_id" type="varchar(64)"/>
+            <column name="actor" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_type" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="details" type="jsonb"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-03-create-processed-operation" author="ensap-phase0">
+        <createTable tableName="processed_operation">
+            <column name="operation_id" type="varchar(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="processed_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <!-- Primary key on operation_id IS the idempotency guarantee (master
+             spec §12): a duplicate worker execution attempt for the same
+             "DEP-001:ROUTER:PROVISION"-style key fails the insert. -->
+    </changeSet>
+
+</databaseChangeLog>
