@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                   xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
+                   xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
+                   xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                   id="ensap-definitions"
+                   targetNamespace="http://ensap.example/bpmn"
+                   exporter="ENSAP Phase 0 scaffold"
+                   exporterVersion="0.1">
+
+  <bpmn:process id="deployment-process" name="ENSAP Deployment Process" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_DeploymentRequested" name="deployment.requested">
+      <bpmn:outgoing>Flow_ToValidateSite</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_ValidateSite" name="Validate Site">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="validate-site" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToValidateSite</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToGenerateConfig</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_GenerateConfiguration" name="Generate Configuration">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="generate-configuration" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToGenerateConfig</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToProvisionRouter</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ProvisionRouter" name="Provision Router">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="router-provision" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToProvisionRouter</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToProvisionSwitch</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ProvisionSwitch" name="Provision Switch">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="switch-provision" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToProvisionSwitch</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToProvisionWireless</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ProvisionWireless" name="Provision Wireless">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="wireless-provision" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToProvisionWireless</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToProvisionFirewall</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ProvisionFirewall" name="Provision Firewall">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="firewall-provision" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToProvisionFirewall</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToValidateDeployment</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ValidateDeployment" name="Validate Deployment">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="validate-deployment" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ToValidateDeployment</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToValidationGateway</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_ValidationResult" name="Validation passed?">
+      <bpmn:incoming>Flow_ToValidationGateway</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidationPassed</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ValidationFailed</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_StoreEvidence" name="Store Evidence">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="store-evidence" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ValidationPassed</bpmn:incoming>
+      <bpmn:outgoing>Flow_ToComplete</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_DeploymentCompleted" name="deployment.completed">
+      <bpmn:incoming>Flow_ToComplete</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="EndEvent_DeploymentFailed" name="deployment.failed">
+      <bpmn:incoming>Flow_ValidationFailed</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_ToValidateSite" sourceRef="StartEvent_DeploymentRequested" targetRef="Task_ValidateSite" />
+    <bpmn:sequenceFlow id="Flow_ToGenerateConfig" sourceRef="Task_ValidateSite" targetRef="Task_GenerateConfiguration" />
+    <bpmn:sequenceFlow id="Flow_ToProvisionRouter" sourceRef="Task_GenerateConfiguration" targetRef="Task_ProvisionRouter" />
+    <bpmn:sequenceFlow id="Flow_ToProvisionSwitch" sourceRef="Task_ProvisionRouter" targetRef="Task_ProvisionSwitch" />
+    <bpmn:sequenceFlow id="Flow_ToProvisionWireless" sourceRef="Task_ProvisionSwitch" targetRef="Task_ProvisionWireless" />
+    <bpmn:sequenceFlow id="Flow_ToProvisionFirewall" sourceRef="Task_ProvisionWireless" targetRef="Task_ProvisionFirewall" />
+    <bpmn:sequenceFlow id="Flow_ToValidateDeployment" sourceRef="Task_ProvisionFirewall" targetRef="Task_ValidateDeployment" />
+    <bpmn:sequenceFlow id="Flow_ToValidationGateway" sourceRef="Task_ValidateDeployment" targetRef="Gateway_ValidationResult" />
+    <bpmn:sequenceFlow id="Flow_ValidationPassed" name="pass" sourceRef="Gateway_ValidationResult" targetRef="Task_StoreEvidence" />
+    <bpmn:sequenceFlow id="Flow_ValidationFailed" name="fail" sourceRef="Gateway_ValidationResult" targetRef="EndEvent_DeploymentFailed" />
+    <bpmn:sequenceFlow id="Flow_ToComplete" sourceRef="Task_StoreEvidence" targetRef="EndEvent_DeploymentCompleted" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="deployment-process">
+      <bpmndi:BPMNShape id="StartEvent_DeploymentRequested_di" bpmnElement="StartEvent_DeploymentRequested">
+        <omgdc:Bounds x="152" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateSite_di" bpmnElement="Task_ValidateSite">
+        <omgdc:Bounds x="240" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GenerateConfiguration_di" bpmnElement="Task_GenerateConfiguration">
+        <omgdc:Bounds x="390" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvisionRouter_di" bpmnElement="Task_ProvisionRouter">
+        <omgdc:Bounds x="540" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvisionSwitch_di" bpmnElement="Task_ProvisionSwitch">
+        <omgdc:Bounds x="690" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvisionWireless_di" bpmnElement="Task_ProvisionWireless">
+        <omgdc:Bounds x="840" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ProvisionFirewall_di" bpmnElement="Task_ProvisionFirewall">
+        <omgdc:Bounds x="990" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ValidateDeployment_di" bpmnElement="Task_ValidateDeployment">
+        <omgdc:Bounds x="1140" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ValidationResult_di" bpmnElement="Gateway_ValidationResult" isMarkerVisible="true">
+        <omgdc:Bounds x="1295" y="95" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StoreEvidence_di" bpmnElement="Task_StoreEvidence">
+        <omgdc:Bounds x="1400" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_DeploymentCompleted_di" bpmnElement="EndEvent_DeploymentCompleted">
+        <omgdc:Bounds x="1552" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_DeploymentFailed_di" bpmnElement="EndEvent_DeploymentFailed">
+        <omgdc:Bounds x="1312" y="230" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

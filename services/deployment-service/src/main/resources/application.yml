@@ -15,6 +15,16 @@ spring:
 server:
   port: 8080
 
+# Camunda 8 workflow orchestration (master spec §8). Disable in
+# environments without a Zeebe broker (e.g. plain unit-test runs); the IT
+# suite documents this as design-verified rather than running a Zeebe
+# testcontainer (see AbstractIntegrationTest).
+deployment:
+  camunda:
+    enabled: ${DEPLOYMENT_CAMUNDA_ENABLED:true}
+    gateway-address: ${ZEEBE_GATEWAY_ADDRESS:localhost:26500}
+    call-timeout-seconds: 10
+
 management:
   endpoints:
     web:

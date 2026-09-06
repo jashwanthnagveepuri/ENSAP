@@ -11,3 +11,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+deployment:
+  camunda:
+    enabled: false   # no Zeebe broker in this smoke-test profile

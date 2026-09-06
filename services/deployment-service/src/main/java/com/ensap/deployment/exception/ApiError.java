@@ -13,13 +13,7 @@ public record ApiError(
         String message,
         String correlationId
 ) {
-    public static ApiError notImplemented(String correlationId) {
-        return new ApiError(
-                Instant.now(),
-                501,
-                "NOT_IMPLEMENTED",
-                "This endpoint is a Phase 0 scaffold stub; business logic lands in a later phase (see docs/README status).",
-                correlationId
-        );
+    public static ApiError of(int status, String code, String message, String correlationId) {
+        return new ApiError(Instant.now(), status, code, message, correlationId);
     }
 }
