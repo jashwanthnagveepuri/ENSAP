@@ -19,8 +19,8 @@ export const routes: RouteDef[] = [
   { path: '/deployments/batch', title: 'Batch Deployment', phase: 'Phase 6' },
   { path: '/deployments/:deploymentId/progress', title: 'Deployment Progress', phase: 'Phase 2' },
   { path: '/deployments/history', title: 'Deployment History', phase: 'Phase 2' },
-  { path: '/deployments/retry-queue', title: 'Failure/Retry Queue', phase: 'Phase 5' },
+  { path: '/deployments/retry-queue', title: 'Failure/Retry Queue', phase: 'Phase 3' },
   { path: '/deployments/:deploymentId/evidence', title: 'Evidence Viewer', phase: 'Phase 2' },
   { path: '/admin/provider-simulation', title: 'Provider Simulation/Admin', phase: 'Phase 4' },
-  { path: '/audit', title: 'Audit History', phase: 'Phase 2' },
+  { path: '/audit', title: 'Audit History', phase: 'Phase 3' },
 ]

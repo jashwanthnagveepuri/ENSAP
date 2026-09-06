@@ -8,6 +8,8 @@ import RefreshSite from './pages/sites/RefreshSite'
 import StartDeployment from './pages/deployments/StartDeployment'
 import DeploymentProgress from './pages/deployments/DeploymentProgress'
 import DeploymentHistory from './pages/deployments/DeploymentHistory'
+import RetryQueue from './pages/deployments/RetryQueue'
+import AuditHistory from './pages/audit/AuditHistory'
 import { routes } from './routes'
 
 /** Routes with a real page component; everything else still renders PageStub. */
@@ -19,6 +21,8 @@ const pageComponents: Record<string, ComponentType> = {
   '/deployments/start': StartDeployment,
   '/deployments/:deploymentId/progress': DeploymentProgress,
   '/deployments/history': DeploymentHistory,
+  '/deployments/retry-queue': RetryQueue,
+  '/audit': AuditHistory,
 }
 
 /**

@@ -27,6 +27,8 @@ export default function Dashboard() {
         <li><Link to="/sites">Search sites</Link></li>
         <li><Link to="/deployments/start">Start a deployment</Link></li>
         <li><Link to="/deployments/history">Deployment history</Link></li>
+        <li><Link to="/deployments/retry-queue">Failure / retry queue</Link></li>
+        <li><Link to="/audit">Audit history</Link></li>
       </ul>
     </section>
   )
