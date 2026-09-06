@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-01-create-site" author="ensap-phase0">
+        <createTable tableName="site">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region" type="varchar(64)"/>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_system" type="varchar(64)"/>
+            <column name="last_refreshed_at" type="timestamptz"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-02-create-device" author="ensap-phase0">
+        <createTable tableName="device">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_device_site" references="site(id)"/>
+            </column>
+            <column name="type" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vendor" type="varchar(64)"/>
+            <column name="model" type="varchar(64)"/>
+            <column name="serial_number" type="varchar(128)"/>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-03-create-network-profile" author="ensap-phase0">
+        <createTable tableName="network_profile">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_network_profile_site" references="site(id)"/>
+            </column>
+            <column name="profile_name" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-04-create-vlan" author="ensap-phase0">
+        <createTable tableName="vlan">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="network_profile_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_vlan_network_profile" references="network_profile(id)"/>
+            </column>
+            <column name="vlan_tag" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="varchar(128)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-05-create-subnet" author="ensap-phase0">
+        <createTable tableName="subnet">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="network_profile_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_subnet_network_profile" references="network_profile(id)"/>
+            </column>
+            <column name="cidr" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="purpose" type="varchar(64)"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-06-create-wan-circuit" author="ensap-phase0">
+        <createTable tableName="wan_circuit">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_wan_circuit_site" references="site(id)"/>
+            </column>
+            <column name="carrier" type="varchar(64)"/>
+            <column name="circuit_id" type="varchar(64)"/>
+            <column name="bandwidth_mbps" type="int"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

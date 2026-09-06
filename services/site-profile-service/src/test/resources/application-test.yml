@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:site-profile-service;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  liquibase:
+    enabled: false   # Phase 0 smoke test only; changelog uses Postgres-specific
+                      # types validated against real PostgreSQL from Phase 1 on
+                      # (Testcontainers, docs/17-testing-strategy.md)
+  jpa:
+    hibernate:
+      ddl-auto: create-drop

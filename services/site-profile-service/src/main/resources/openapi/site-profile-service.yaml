@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: ENSAP Site Profile Service
+  version: "0.1.0"
+  description: >
+    Owns site/device/network-profile/WAN-circuit/VLAN/subnet data
+    (docs/06-component-design.md). Phase 0: contract only — handlers
+    return 501 until Phase 1 implements the behavior.
+servers:
+  - url: http://localhost:8081
+
+paths:
+  /api/sites:
+    get:
+      summary: List/search sites
+      operationId: listSites
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Page of sites
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/Site' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/sites/{siteId}:
+    get:
+      summary: Get a site
+      operationId: getSite
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+      responses:
+        '200':
+          description: Site details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '404':
+          $ref: '#/components/responses/Error'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/sites/{siteId}/refresh:
+    post:
+      summary: Refresh a site profile from mock source systems
+      operationId: refreshSite
+      parameters:
+        - $ref: '#/components/parameters/SiteId'
+      responses:
+        '202':
+          description: Refresh accepted
+        '404':
+          $ref: '#/components/responses/Error'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+components:
+  parameters:
+    SiteId:
+      name: siteId
+      in: path
+      required: true
+      schema: { type: string }
+
+  schemas:
+    Site:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        region: { type: string }
+        status: { type: string, enum: [ACTIVE, PENDING, DECOMMISSIONED] }
+        lastRefreshedAt: { type: string, format: date-time }
+
+    ApiError:
+      type: object
+      description: docs/10-api-design.md error model
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotImplemented:
+      description: Phase 0 scaffold stub
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
