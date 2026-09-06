@@ -25,7 +25,7 @@ public class CorrelationIdWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        String correlationId = request.headers().getFirst(HEADER);
+        String correlationId = request.getHeaders().getFirst(HEADER);
         if (correlationId == null || correlationId.isBlank()) {
             correlationId = UUID.randomUUID().toString();
             request = request.mutate().header(HEADER, correlationId).build();

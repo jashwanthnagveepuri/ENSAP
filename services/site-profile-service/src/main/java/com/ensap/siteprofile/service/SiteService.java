@@ -109,7 +109,7 @@ public class SiteService {
     }
 
     private Specification<Site> buildSpecification(String status, String region, String name) {
-        Specification<Site> spec = Specification.where(null);
+        Specification<Site> spec = (root, query, cb) -> cb.conjunction();
         if (status != null && !status.isBlank()) {
             spec = spec.and((root, q, cb) -> cb.equal(root.get("status"), status));
         }
