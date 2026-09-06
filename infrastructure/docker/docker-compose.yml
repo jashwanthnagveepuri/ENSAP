@@ -1,17 +1,19 @@
-# ENSAP local Docker Compose skeleton (Phase 0, see docs/14-deployment.md).
+# ENSAP local Docker Compose skeleton (see docs/14-deployment.md).
 #
-# Live today: postgres, redis, kafka, zeebe, operate, and the three core
-# Spring Boot service skeletons (site-profile-service, deployment-service,
-# evidence-audit-service) — each currently just an actuator-healthy shell
-# with 501-stub APIs (see each service's README).
+# Live today: postgres, redis, kafka, zeebe, operate; site-profile-service
+# (Phase 1: real site/device/network-profile CRUD+search+refresh, see its
+# README) plus the three Phase 1 mock source systems it reconciles against
+# on refresh (location-service, inventory-service, network-service); and
+# deployment-service/evidence-audit-service, still Phase 0 501-stub shells.
 #
-# Commented out below: mocks/*, workers/*, and frontend — their images
-# don't exist yet (Phase 1/4 respectively). Uncomment as each is built.
+# Commented out below: provider mocks (router/switch/wireless/firewall/
+# ticketing), workers/*, and frontend — Phase 4/1 respectively.
 #
 # No AWS credentials are required to run any of this (master spec §2.3).
 #
 # Usage:
 #   docker compose up -d postgres redis kafka zeebe operate
+#   docker compose up -d --build location-service inventory-service network-service
 #   docker compose up -d --build site-profile-service deployment-service evidence-audit-service
 
 name: ensap
@@ -80,6 +82,24 @@ services:
     depends_on:
       - zeebe
 
+  location-service:
+    build:
+      context: ../../mocks/location-service
+    ports:
+      - "8091:8080"
+
+  inventory-service:
+    build:
+      context: ../../mocks/inventory-service
+    ports:
+      - "8092:8080"
+
+  network-service:
+    build:
+      context: ../../mocks/network-service
+    ports:
+      - "8093:8080"
+
   site-profile-service:
     build:
       context: ../../services/site-profile-service
@@ -90,6 +110,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ensap
       SPRING_DATASOURCE_PASSWORD: ensap_dev_only
       SPRING_DATA_REDIS_HOST: redis
+      LOCATION_SERVICE_URL: http://location-service:8080
+      INVENTORY_SERVICE_URL: http://inventory-service:8080
+      NETWORK_SERVICE_URL: http://network-service:8080
     depends_on:
       postgres:
         condition: service_healthy
@@ -122,7 +145,7 @@ services:
       postgres:
         condition: service_healthy
 
-  # --- Not yet built (Phase 1: frontend; Phase 4: mocks/workers) -----------
+  # --- Not yet built (Phase 1: frontend; Phase 4: provider mocks/workers) --
   #
   # frontend:
   #   build:
@@ -131,10 +154,10 @@ services:
   #     - "5173:80"
   #
   # router-provider / switch-provider / wireless-provider / firewall-provider
-  # / ticketing-provider / location-service / inventory-service /
-  # network-service (mocks/*):
-  #   each a tiny HTTP mock with a configurable-behavior admin endpoint
-  #   (docs/06-component-design.md, master spec §22) — added in Phase 4.
+  # / ticketing-provider (mocks/*): each a tiny HTTP mock with a
+  #   configurable-behavior admin endpoint (docs/06-component-design.md,
+  #   master spec §22) — added in Phase 4. location-service/inventory-service/
+  #   network-service (the Phase 1 source-of-truth mocks) are live above.
   #
   # router-worker / switch-worker / wireless-worker / firewall-worker /
   # ticketing-worker (workers/*):

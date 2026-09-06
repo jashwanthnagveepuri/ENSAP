@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: inventory-service-mock
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
