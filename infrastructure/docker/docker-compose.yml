@@ -1,18 +1,20 @@
 # ENSAP local Docker Compose skeleton (Phase 0, see docs/14-deployment.md).
 #
-# Live today: postgres, redis, kafka, zeebe, operate, and the three core
+# Live today: postgres, redis, kafka, zeebe, operate, the three core
 # Spring Boot service skeletons (site-profile-service, deployment-service,
 # evidence-audit-service) — each currently just an actuator-healthy shell
-# with 501-stub APIs (see each service's README).
+# with 501-stub APIs (see each service's README) — and provider-mock, the
+# router/switch/wireless/firewall/ticketing provider mock ecosystem
+# (mocks/provider-mock/README.md, master spec §22).
 #
-# Commented out below: mocks/*, workers/*, and frontend — their images
-# don't exist yet (Phase 1/4 respectively). Uncomment as each is built.
+# Commented out below: the source-system mocks, workers/*, and frontend —
+# their images don't exist yet (Phase 1/4). Uncomment as each is built.
 #
 # No AWS credentials are required to run any of this (master spec §2.3).
 #
 # Usage:
 #   docker compose up -d postgres redis kafka zeebe operate
-#   docker compose up -d --build site-profile-service deployment-service evidence-audit-service
+#   docker compose up -d --build site-profile-service deployment-service evidence-audit-service provider-mock
 
 name: ensap
 
@@ -122,7 +124,18 @@ services:
       postgres:
         condition: service_healthy
 
-  # --- Not yet built (Phase 1: frontend; Phase 4: mocks/workers) -----------
+  # One configurable WebFlux app mocking all five infrastructure provider
+  # APIs by path (master spec §22) — router/switch/wireless/firewall/
+  # ticketing — with a runtime-controllable behavior admin API at
+  # /admin/providers/{providerType} (backs the frontend's Provider
+  # Simulation page). See mocks/provider-mock/README.md.
+  provider-mock:
+    build:
+      context: ../../mocks/provider-mock
+    ports:
+      - "8090:8080"
+
+  # --- Not yet built (Phase 1: frontend; Phase 4: source-system mocks/workers) -----------
   #
   # frontend:
   #   build:
@@ -130,11 +143,10 @@ services:
   #   ports:
   #     - "5173:80"
   #
-  # router-provider / switch-provider / wireless-provider / firewall-provider
-  # / ticketing-provider / location-service / inventory-service /
-  # network-service (mocks/*):
-  #   each a tiny HTTP mock with a configurable-behavior admin endpoint
-  #   (docs/06-component-design.md, master spec §22) — added in Phase 4.
+  # location-service / inventory-service / network-service (mocks/*):
+  #   source-system mocks, each a tiny HTTP mock with a configurable-behavior
+  #   admin endpoint (docs/06-component-design.md, master spec §22) — added
+  #   in Phase 4.
   #
   # router-worker / switch-worker / wireless-worker / firewall-worker /
   # ticketing-worker (workers/*):
