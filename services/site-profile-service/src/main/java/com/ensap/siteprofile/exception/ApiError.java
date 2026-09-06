@@ -22,4 +22,8 @@ public record ApiError(
                 correlationId
         );
     }
+
+    public static ApiError of(int status, String code, String message, String correlationId) {
+        return new ApiError(Instant.now(), status, code, message, correlationId);
+    }
 }
