@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <changeSet id="001-01-create-deployment-batch" author="ensap-phase0">
+        <createTable tableName="deployment_batch">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_sites" type="int"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-02-create-deployment" author="ensap-phase0">
+        <createTable tableName="deployment">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="batch_id" type="varchar(64)">
+                <constraints nullable="true" foreignKeyName="fk_deployment_batch" references="deployment_batch(id)"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="varchar(128)"/>
+            <column name="requested_by" type="varchar(128)"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-03-create-deployment-step" author="ensap-phase0">
+        <createTable tableName="deployment_step">
+            <column name="id" type="varchar(64)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deployment_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_deployment_step_deployment" references="deployment(id)"/>
+            </column>
+            <column name="step_name" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="varchar(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attempt_count" type="int" defaultValueNumeric="0"/>
+            <column name="last_error" type="text"/>
+            <column name="started_at" type="timestamptz"/>
+            <column name="completed_at" type="timestamptz"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-04-create-idempotency-key" author="ensap-phase0">
+        <createTable tableName="idempotency_key">
+            <column name="key" type="varchar(128)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deployment_id" type="varchar(64)">
+                <constraints nullable="false" foreignKeyName="fk_idempotency_key_deployment" references="deployment(id)"/>
+            </column>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-05-create-outbox-event" author="ensap-phase0">
+        <createTable tableName="outbox_event">
+            <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="aggregate_type" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="aggregate_id" type="varchar(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_type" type="varchar(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_version" type="int" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payload" type="jsonb">
+                <constraints nullable="false"/>
+            </column>
+            <column name="correlation_id" type="uuid"/>
+            <column name="trace_id" type="varchar(128)"/>
+            <column name="created_at" type="timestamptz">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="timestamptz"/>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>

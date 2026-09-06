@@ -1,0 +1,162 @@
+openapi: 3.0.3
+info:
+  title: ENSAP Deployment Service
+  version: "0.1.0"
+  description: >
+    Owns deployment/batch/step lifecycle and idempotency
+    (docs/06-component-design.md). Phase 0: contract only — handlers
+    return 501 until Phase 2 implements the behavior.
+servers:
+  - url: http://localhost:8082
+
+paths:
+  /api/deployments:
+    get:
+      summary: List/search deployments
+      operationId: listDeployments
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: siteId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Page of deployments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/Deployment' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+    post:
+      summary: Start a deployment (idempotent)
+      operationId: createDeployment
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [siteId]
+              properties:
+                siteId: { type: string }
+      responses:
+        '201':
+          description: Deployment created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
+        '200':
+          description: Repeated request with the same Idempotency-Key — returns the original deployment, no duplicate created (docs/10-api-design.md)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/deployments/{deploymentId}:
+    get:
+      summary: Get a deployment
+      operationId: getDeployment
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      responses:
+        '200':
+          description: Deployment details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
+        '404':
+          $ref: '#/components/responses/Error'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/deployments/{deploymentId}/retry:
+    post:
+      summary: Manually retry a failed deployment/step (docs/08-workflow.md — FAILED_REQUIRES_ATTENTION)
+      operationId: retryDeployment
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      responses:
+        '202':
+          description: Retry accepted
+        '404':
+          $ref: '#/components/responses/Error'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+  /api/deployments/{deploymentId}/cancel:
+    post:
+      summary: Cancel a deployment
+      operationId: cancelDeployment
+      parameters:
+        - $ref: '#/components/parameters/DeploymentId'
+      responses:
+        '202':
+          description: Cancellation accepted
+        '404':
+          $ref: '#/components/responses/Error'
+        '501':
+          $ref: '#/components/responses/NotImplemented'
+
+components:
+  parameters:
+    DeploymentId:
+      name: deploymentId
+      in: path
+      required: true
+      schema: { type: string }
+
+  schemas:
+    Deployment:
+      type: object
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, SUCCEEDED, FAILED, FAILED_REQUIRES_ATTENTION, CANCELLED]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ApiError:
+      type: object
+      description: docs/10-api-design.md error model
+      properties:
+        timestamp: { type: string, format: date-time }
+        status: { type: integer }
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }
+
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+    NotImplemented:
+      description: Phase 0 scaffold stub
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
