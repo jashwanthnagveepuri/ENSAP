@@ -6,7 +6,7 @@
 > vendor credentials, APIs, or infrastructure IDs are used anywhere in
 > this repository.
 
-Cloud-native, event-driven learning project demonstrating distributed
+Cloud-native, event-driven project demonstrating distributed
 workflow orchestration (Camunda 8), Kafka-based asynchronous processing,
 resilient microservices, AWS infrastructure, Kubernetes, observability,
 security, and (later) controlled agentic AI. Full spec:
