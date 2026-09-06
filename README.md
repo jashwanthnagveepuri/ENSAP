@@ -12,12 +12,16 @@ resilient microservices, AWS infrastructure, Kubernetes, observability,
 security, and (later) controlled agentic AI. Full spec:
 `docs/01-prd.md` onward.
 
-## Status: Phase 0 — Architecture & Scaffold (current)
+## Status: Phase 1 — Site Profile Service (current)
 
-Per the master spec's phased build plan (§37), this repository is
-**scaffolding and documentation only** — no business logic is
-implemented yet. See `docs/17-testing-strategy.md` for what's tested
-today vs. planned, and each service's README for its own status.
+Per the master spec's phased build plan (§37), Phase 0 (scaffolding) is
+done and Phase 1 (`site-profile-service` CRUD/search/refresh against
+synthetic source systems) is now **green and verified**:
+build + 5 unit tests + 1 context-load smoke test + 4 Testcontainers
+(real Postgres/Redis) integration tests all pass via `./mvnw verify`.
+`deployment-service` and `evidence-audit-service` remain Phase 0 stubs.
+See `docs/17-testing-strategy.md` for what's tested today vs. planned,
+and each service's README for its own status.
 
 | Component | Status |
 |---|---|
@@ -28,9 +32,13 @@ today vs. planned, and each service's README for its own status.
 | Event catalog | `docs/11-event-catalog.md` + `shared/event-contracts/asyncapi.yaml` |
 | Camunda workflow design | `docs/08-workflow.md` + `workflow/camunda/deployment-process.bpmn` |
 | Docker Compose skeleton | `infrastructure/docker/docker-compose.yml` (postgres/redis/kafka/zeebe/operate + 3 services live; mocks/workers/frontend commented, not built yet) |
-| `site-profile-service`, `deployment-service`, `evidence-audit-service` | Spring Boot 3 / Java 21 / WebFlux **functional-endpoint** skeletons — build + 1 context-load smoke test each, all endpoints `501` stubs |
+| `site-profile-service` | **Phase 1 done**: CRUD/search/refresh handlers, JPA entities/repositories, validation, Redis caching, correlation-id + rate-limit filters, wired against the Phase 1 source-system mocks. 5 unit + 1 smoke + 4 Testcontainers integration tests green (`./mvnw verify`). |
+| `deployment-service`, `evidence-audit-service` | Spring Boot 3 / Java 21 / WebFlux **functional-endpoint** skeletons — build + 1 context-load smoke test each, all endpoints `501` stubs (Phase 0, unchanged) |
 | `frontend` | React/TypeScript/Vite skeleton, 13 routes (master spec §5) rendering placeholders, builds + 1 test passes |
-| `workers/*`, `mocks/*` | Directory + README placeholders only (Phase 4) |
+| `mocks/location-service`, `mocks/inventory-service`, `mocks/network-service` | Phase 1 synthetic source-of-truth systems `site-profile-service` reconciles against on refresh |
+| `mocks/provider-mock` (router/switch/wireless/firewall/ticketing) | Merged provider mock ecosystem (master spec §22); compiles, not yet wired into a worker |
+| `shared/common-observability` | Merged correlation-id propagation library + metric/dashboard conventions (master spec §24); compiles, not yet adopted by all services |
+| `workers/*` | Directory + README placeholders only (Phase 4) |
 | `infrastructure/{kubernetes,helm,terraform}` | Placeholders (Phase 9/10) |
 | `.github/workflows/ci.yml` | Compile + unit test only (Phase 11 adds scan/build/deploy stages) |
 
