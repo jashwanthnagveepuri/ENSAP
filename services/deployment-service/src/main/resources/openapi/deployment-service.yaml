@@ -1,11 +1,14 @@
 openapi: 3.0.3
 info:
   title: ENSAP Deployment Service
-  version: "0.1.0"
+  version: "0.2.0"
   description: >
     Owns deployment/batch/step lifecycle and idempotency
-    (docs/06-component-design.md). Phase 0: contract only — handlers
-    return 501 until Phase 2 implements the behavior.
+    (docs/06-component-design.md, master spec §7.2/§12). Phase 2: a
+    deployment can be created (idempotently) and tracked through a basic
+    Camunda 8 workflow (workflow/camunda/deployment-process.bpmn). Provider
+    job workers are Phase 4 — a deployment may sit at its first workflow
+    step until then.
 servers:
   - url: http://localhost:8082
 
@@ -23,7 +26,7 @@ paths:
           schema: { type: integer, default: 20 }
         - name: status
           in: query
-          schema: { type: string }
+          schema: { $ref: '#/components/schemas/DeploymentStatus' }
         - name: siteId
           in: query
           schema: { type: string }
@@ -41,8 +44,6 @@ paths:
                   page: { type: integer }
                   size: { type: integer }
                   totalElements: { type: integer }
-        '501':
-          $ref: '#/components/responses/NotImplemented'
     post:
       summary: Start a deployment (idempotent)
       operationId: createDeployment
@@ -50,16 +51,15 @@ paths:
         - name: Idempotency-Key
           in: header
           required: true
+          description: >
+            Replaying the same key returns the original deployment
+            (200) instead of creating a duplicate (master spec §12).
           schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [siteId]
-              properties:
-                siteId: { type: string }
+            schema: { $ref: '#/components/schemas/CreateDeploymentRequest' }
       responses:
         '201':
           description: Deployment created
@@ -67,12 +67,12 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Deployment' }
         '200':
-          description: Repeated request with the same Idempotency-Key — returns the original deployment, no duplicate created (docs/10-api-design.md)
+          description: Repeated request with the same Idempotency-Key — returns the original deployment, no duplicate created
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Deployment' }
-        '501':
-          $ref: '#/components/responses/NotImplemented'
+        '400':
+          $ref: '#/components/responses/Error'
 
   /api/deployments/{deploymentId}:
     get:
@@ -88,22 +88,26 @@ paths:
               schema: { $ref: '#/components/schemas/Deployment' }
         '404':
           $ref: '#/components/responses/Error'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
 
   /api/deployments/{deploymentId}/retry:
     post:
-      summary: Manually retry a failed deployment/step (docs/08-workflow.md — FAILED_REQUIRES_ATTENTION)
+      summary: Manually retry a failed deployment (docs/08-workflow.md — FAILED / FAILED_REQUIRES_ATTENTION)
       operationId: retryDeployment
       parameters:
         - $ref: '#/components/parameters/DeploymentId'
       responses:
         '202':
           description: Retry accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
         '404':
           $ref: '#/components/responses/Error'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
+        '409':
+          description: Deployment is not in a retryable state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
 
   /api/deployments/{deploymentId}/cancel:
     post:
@@ -114,10 +118,16 @@ paths:
       responses:
         '202':
           description: Cancellation accepted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Deployment' }
         '404':
           $ref: '#/components/responses/Error'
-        '501':
-          $ref: '#/components/responses/NotImplemented'
+        '409':
+          description: Deployment is already in a terminal state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
 
 components:
   parameters:
@@ -128,16 +138,42 @@ components:
       schema: { type: string }
 
   schemas:
+    DeploymentStatus:
+      type: string
+      enum: [REQUESTED, RUNNING, COMPLETED, FAILED, FAILED_REQUIRES_ATTENTION, CANCELLED]
+
+    CreateDeploymentRequest:
+      type: object
+      required: [siteId]
+      properties:
+        siteId: { type: string }
+        requestedBy: { type: string }
+
+    DeploymentStep:
+      type: object
+      properties:
+        id: { type: string }
+        stepName: { type: string }
+        status: { type: string, enum: [PENDING, COMPLETED, FAILED] }
+        attemptCount: { type: integer }
+        lastError: { type: string, nullable: true }
+        startedAt: { type: string, format: date-time, nullable: true }
+        completedAt: { type: string, format: date-time, nullable: true }
+
     Deployment:
       type: object
       properties:
         id: { type: string }
         siteId: { type: string }
-        status:
-          type: string
-          enum: [PENDING, IN_PROGRESS, SUCCEEDED, FAILED, FAILED_REQUIRES_ATTENTION, CANCELLED]
+        batchId: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/DeploymentStatus' }
+        workflowInstanceId: { type: string, nullable: true }
+        requestedBy: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        steps:
+          type: array
+          items: { $ref: '#/components/schemas/DeploymentStep' }
 
     ApiError:
       type: object
@@ -152,11 +188,6 @@ components:
   responses:
     Error:
       description: Error
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/ApiError' }
-    NotImplemented:
-      description: Phase 0 scaffold stub
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ApiError' }
