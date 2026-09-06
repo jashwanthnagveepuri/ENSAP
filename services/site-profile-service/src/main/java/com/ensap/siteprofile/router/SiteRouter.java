@@ -18,8 +18,11 @@ public class SiteRouter {
     @Bean
     public RouterFunction<ServerResponse> siteRoutes(SiteHandler siteHandler) {
         return route()
+                .POST("/api/sites", siteHandler::createSite)
                 .GET("/api/sites", siteHandler::listSites)
                 .GET("/api/sites/{siteId}", siteHandler::getSite)
+                .PUT("/api/sites/{siteId}", siteHandler::updateSite)
+                .DELETE("/api/sites/{siteId}", siteHandler::deleteSite)
                 .POST("/api/sites/{siteId}/refresh", siteHandler::refreshSite)
                 .build();
     }

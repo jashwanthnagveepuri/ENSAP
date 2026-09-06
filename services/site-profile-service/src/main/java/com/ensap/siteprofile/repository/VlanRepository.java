@@ -9,5 +9,7 @@ public interface VlanRepository extends JpaRepository<Vlan, String> {
 
     List<Vlan> findByNetworkProfileId(String networkProfileId);
 
+    List<Vlan> findByNetworkProfileIdIn(List<String> networkProfileIds);
+
     void deleteByNetworkProfileId(String networkProfileId);
 }

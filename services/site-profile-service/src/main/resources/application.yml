@@ -19,6 +19,14 @@ spring:
 server:
   port: 8080
 
+# Phase 1 mock "source of truth" systems the refresh flow reconciles
+# against (master spec §22, mocks/location-service|inventory-service|network-service).
+site-profile:
+  source-systems:
+    location-url: ${LOCATION_SERVICE_URL:http://localhost:8091}
+    inventory-url: ${INVENTORY_SERVICE_URL:http://localhost:8092}
+    network-url: ${NETWORK_SERVICE_URL:http://localhost:8093}
+
 management:
   endpoints:
     web:

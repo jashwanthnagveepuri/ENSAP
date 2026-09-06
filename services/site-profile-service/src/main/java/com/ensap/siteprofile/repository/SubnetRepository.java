@@ -9,5 +9,7 @@ public interface SubnetRepository extends JpaRepository<Subnet, String> {
 
     List<Subnet> findByNetworkProfileId(String networkProfileId);
 
+    List<Subnet> findByNetworkProfileIdIn(List<String> networkProfileIds);
+
     void deleteByNetworkProfileId(String networkProfileId);
 }
