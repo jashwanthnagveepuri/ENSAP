@@ -11,19 +11,31 @@ spring:
     open-in-view: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        # Fail an unreachable-broker send fast instead of blocking the outbox
+        # poller on the client's default 60s metadata-fetch timeout.
+        max.block.ms: 5000
 
 server:
   port: 8080
 
-# Camunda 8 workflow orchestration (master spec §8). Disable in
-# environments without a Zeebe broker (e.g. plain unit-test runs); the IT
-# suite documents this as design-verified rather than running a Zeebe
-# testcontainer (see AbstractIntegrationTest).
 deployment:
+  # Camunda 8 workflow orchestration (master spec §8). Disable in
+  # environments without a Zeebe broker (e.g. plain unit-test runs); the IT
+  # suite documents this as design-verified rather than running a Zeebe
+  # testcontainer (see AbstractIntegrationTest).
   camunda:
     enabled: ${DEPLOYMENT_CAMUNDA_ENABLED:true}
     gateway-address: ${ZEEBE_GATEWAY_ADDRESS:localhost:26500}
     call-timeout-seconds: 10
+  # Transactional outbox publisher (master spec §11, §37 Phase 3).
+  outbox:
+    poll-interval-ms: ${DEPLOYMENT_OUTBOX_POLL_INTERVAL_MS:2000}
 
 management:
   endpoints:

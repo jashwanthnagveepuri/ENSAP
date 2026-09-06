@@ -11,7 +11,10 @@ public enum DeploymentEventType {
     REQUESTED("deployment.requested"),
     STARTED("deployment.started"),
     COMPLETED("deployment.completed"),
-    FAILED("deployment.failed");
+    FAILED("deployment.failed"),
+    /** Not in the original Phase 0 catalog draft — added in Phase 3 alongside the outbox producer,
+     * since CANCELLED is a real terminal deployment state (docs/11-event-catalog.md, asyncapi.yaml). */
+    CANCELLED("deployment.cancelled");
 
     private final String type;
 

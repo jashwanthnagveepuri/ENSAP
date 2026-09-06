@@ -42,6 +42,7 @@ publishes/consumes these yet (Phase 3+) — Phase 0 only fixes the shape.
 | `firewall.provisioning.completed` | Firewall Worker | Deployment Service, Evidence/Audit Service | `ensap.firewall.events` |
 | `deployment.completed` | Deployment Service | Evidence/Audit Service | `ensap.deployment.events` |
 | `deployment.failed` | Deployment Service | Evidence/Audit Service | `ensap.deployment.events` |
+| `deployment.cancelled` | Deployment Service | Evidence/Audit Service | `ensap.deployment.events` |
 | `deployment.retry.requested` | Deployment Service | Deployment Service (Camunda signal) | `ensap.deployment.events` |
 
 Per-provider `*.provisioning.failed` events (switch/wireless/firewall)

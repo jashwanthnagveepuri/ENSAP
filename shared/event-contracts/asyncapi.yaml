@@ -38,6 +38,7 @@ channels:
           - $ref: '#/components/messages/DeploymentValidationFailed'
           - $ref: '#/components/messages/DeploymentCompleted'
           - $ref: '#/components/messages/DeploymentFailed'
+          - $ref: '#/components/messages/DeploymentCancelled'
           - $ref: '#/components/messages/DeploymentRetryRequested'
 
   ensap.router.events:
@@ -113,6 +114,9 @@ components:
       payload: { $ref: '#/components/schemas/EventEnvelope' }
     DeploymentFailed:
       name: deployment.failed
+      payload: { $ref: '#/components/schemas/EventEnvelope' }
+    DeploymentCancelled:
+      name: deployment.cancelled
       payload: { $ref: '#/components/schemas/EventEnvelope' }
     DeploymentRetryRequested:
       name: deployment.retry.requested

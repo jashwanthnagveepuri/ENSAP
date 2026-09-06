@@ -10,8 +10,10 @@ import com.ensap.deployment.exception.NotFoundException;
 import com.ensap.deployment.repository.DeploymentRepository;
 import com.ensap.deployment.repository.DeploymentStepRepository;
 import com.ensap.deployment.repository.IdempotencyKeyRepository;
+import com.ensap.deployment.repository.OutboxEventRepository;
 import com.ensap.deployment.workflow.StartResult;
 import com.ensap.deployment.workflow.WorkflowService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +54,7 @@ class DeploymentServiceTest {
     @Mock private DeploymentRepository deploymentRepository;
     @Mock private DeploymentStepRepository stepRepository;
     @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
+    @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private WorkflowService workflowService;
     @Mock private PlatformTransactionManager transactionManager;
 
@@ -62,7 +65,7 @@ class DeploymentServiceTest {
         lenient().when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
         lenient().when(stepRepository.findByDeploymentId(anyString())).thenReturn(List.of());
         service = new DeploymentService(deploymentRepository, stepRepository, idempotencyKeyRepository,
-                workflowService, transactionManager);
+                outboxEventRepository, workflowService, transactionManager, new ObjectMapper());
     }
 
     @Test

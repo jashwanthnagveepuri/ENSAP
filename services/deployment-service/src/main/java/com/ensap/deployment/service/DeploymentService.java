@@ -9,14 +9,20 @@ import com.ensap.deployment.entity.DeploymentStatus;
 import com.ensap.deployment.entity.DeploymentStep;
 import com.ensap.deployment.entity.DeploymentStepStatus;
 import com.ensap.deployment.entity.IdempotencyKeyRecord;
+import com.ensap.deployment.entity.OutboxEvent;
 import com.ensap.deployment.exception.ConflictException;
 import com.ensap.deployment.exception.NotFoundException;
 import com.ensap.deployment.repository.DeploymentRepository;
 import com.ensap.deployment.repository.DeploymentStepRepository;
 import com.ensap.deployment.repository.IdempotencyKeyRepository;
+import com.ensap.deployment.repository.OutboxEventRepository;
 import com.ensap.deployment.util.IdGenerator;
 import com.ensap.deployment.workflow.StartResult;
 import com.ensap.deployment.workflow.WorkflowService;
+import com.ensap.events.DeploymentEventPayload;
+import com.ensap.events.DeploymentEventType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +37,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Business logic for deployments (docs/06-component-design.md — Service
@@ -49,17 +56,49 @@ public class DeploymentService {
     private final DeploymentRepository deploymentRepository;
     private final DeploymentStepRepository stepRepository;
     private final IdempotencyKeyRepository idempotencyKeyRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final WorkflowService workflowService;
     private final TransactionTemplate transactionTemplate;
+    private final ObjectMapper objectMapper;
 
     public DeploymentService(DeploymentRepository deploymentRepository, DeploymentStepRepository stepRepository,
-                              IdempotencyKeyRepository idempotencyKeyRepository, WorkflowService workflowService,
-                              PlatformTransactionManager transactionManager) {
+                              IdempotencyKeyRepository idempotencyKeyRepository, OutboxEventRepository outboxEventRepository,
+                              WorkflowService workflowService, PlatformTransactionManager transactionManager,
+                              ObjectMapper objectMapper) {
         this.deploymentRepository = deploymentRepository;
         this.stepRepository = stepRepository;
         this.idempotencyKeyRepository = idempotencyKeyRepository;
+        this.outboxEventRepository = outboxEventRepository;
         this.workflowService = workflowService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.objectMapper = objectMapper;
+    }
+
+    /**
+     * Writes the outbox_event row for a deployment state change in the SAME
+     * transaction as the change itself (ADR-0004 — no dual-write). Every call
+     * site below already runs inside {@code transactionTemplate}.
+     */
+    private void writeOutboxEvent(Deployment deployment, DeploymentEventType eventType, String errorMessage) {
+        try {
+            DeploymentEventPayload payload = new DeploymentEventPayload(deployment.getId(), deployment.getSiteId(),
+                    deployment.getStatus(), deployment.getRequestedBy(), errorMessage);
+            OutboxEvent event = new OutboxEvent();
+            event.setId(UUID.randomUUID());
+            event.setAggregateType("deployment");
+            event.setAggregateId(deployment.getId());
+            event.setEventType(eventType.type());
+            event.setEventVersion(1);
+            event.setPayload(objectMapper.writeValueAsString(payload));
+            // ponytail: a fresh correlationId per event, not one shared across a deployment's whole
+            // lifecycle — proper request-scoped correlation/trace propagation arrives with
+            // common-observability adoption (§24, Phase 8); the envelope field is populated either way.
+            event.setCorrelationId(UUID.randomUUID());
+            event.setCreatedAt(Instant.now());
+            outboxEventRepository.save(event);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize outbox payload for deployment " + deployment.getId(), e);
+        }
     }
 
     /** @param created true if this call created a new deployment; false if it replayed an existing Idempotency-Key. */
@@ -111,6 +150,7 @@ public class DeploymentService {
                     deployment.setUpdatedAt(now);
                     deploymentRepository.saveAndFlush(deployment);
                     idempotencyKeyRepository.saveAndFlush(new IdempotencyKeyRecord(idempotencyKey, id, now));
+                    writeOutboxEvent(deployment, DeploymentEventType.REQUESTED, null);
                     return id;
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
@@ -136,50 +176,63 @@ public class DeploymentService {
     }
 
     private void applyWorkflowResult(String deploymentId, StartResult result) {
-        Deployment deployment = deploymentRepository.findById(deploymentId)
-                .orElseThrow(() -> NotFoundException.deployment(deploymentId));
-        DeploymentStep step = stepRepository.findByDeploymentIdAndStepName(deploymentId, DeploymentStep.WORKFLOW_START)
-                .orElseGet(() -> {
-                    DeploymentStep s = new DeploymentStep();
-                    s.setId(IdGenerator.next("STEP"));
-                    s.setDeploymentId(deploymentId);
-                    s.setStepName(DeploymentStep.WORKFLOW_START);
-                    s.setAttemptCount(0);
-                    return s;
-                });
-        Instant now = Instant.now();
-        if (step.getStartedAt() == null) {
-            step.setStartedAt(now);
-        }
+        transactionTemplate.executeWithoutResult(status -> {
+            Deployment deployment = deploymentRepository.findById(deploymentId)
+                    .orElseThrow(() -> NotFoundException.deployment(deploymentId));
+            DeploymentStep step = stepRepository.findByDeploymentIdAndStepName(deploymentId, DeploymentStep.WORKFLOW_START)
+                    .orElseGet(() -> {
+                        DeploymentStep s = new DeploymentStep();
+                        s.setId(IdGenerator.next("STEP"));
+                        s.setDeploymentId(deploymentId);
+                        s.setStepName(DeploymentStep.WORKFLOW_START);
+                        s.setAttemptCount(0);
+                        return s;
+                    });
+            Instant now = Instant.now();
+            if (step.getStartedAt() == null) {
+                step.setStartedAt(now);
+            }
 
-        switch (result.outcome()) {
-            case STARTED -> {
-                step.setAttemptCount(step.getAttemptCount() + 1);
-                step.setStatus(DeploymentStepStatus.COMPLETED.name());
-                step.setCompletedAt(now);
-                step.setLastError(null);
-                deployment.setWorkflowInstanceId(result.workflowInstanceId());
-                deployment.setStatus(DeploymentStatus.RUNNING.name());
+            // DISABLED leaves the deployment's status unchanged (no Camunda broker configured) —
+            // no outbox event either, since nothing about the deployment actually changed.
+            DeploymentEventType eventType = null;
+            switch (result.outcome()) {
+                case STARTED -> {
+                    step.setAttemptCount(step.getAttemptCount() + 1);
+                    step.setStatus(DeploymentStepStatus.COMPLETED.name());
+                    step.setCompletedAt(now);
+                    step.setLastError(null);
+                    deployment.setWorkflowInstanceId(result.workflowInstanceId());
+                    deployment.setStatus(DeploymentStatus.RUNNING.name());
+                }
+                case DISABLED -> {
+                    step.setStatus(DeploymentStepStatus.PENDING.name());
+                    log.info("Camunda disabled; deployment {} stays {}", deploymentId, deployment.getStatus());
+                }
+                case ERROR -> {
+                    int attempts = step.getAttemptCount() + 1;
+                    step.setAttemptCount(attempts);
+                    step.setStatus(DeploymentStepStatus.FAILED.name());
+                    step.setLastError(result.errorMessage());
+                    deployment.setStatus(attempts >= MAX_ATTEMPTS_BEFORE_ESCALATION
+                            ? DeploymentStatus.FAILED_REQUIRES_ATTENTION.name()
+                            : DeploymentStatus.FAILED.name());
+                    log.warn("Workflow start failed for deployment {} (attempt {}): {}", deploymentId, attempts, result.errorMessage());
+                }
             }
-            case DISABLED -> {
-                step.setStatus(DeploymentStepStatus.PENDING.name());
-                log.info("Camunda disabled; deployment {} stays {}", deploymentId, deployment.getStatus());
+            if (result.outcome() == StartResult.Outcome.STARTED) {
+                eventType = DeploymentEventType.STARTED;
+            } else if (result.outcome() == StartResult.Outcome.ERROR) {
+                eventType = DeploymentEventType.FAILED;
             }
-            case ERROR -> {
-                int attempts = step.getAttemptCount() + 1;
-                step.setAttemptCount(attempts);
-                step.setStatus(DeploymentStepStatus.FAILED.name());
-                step.setLastError(result.errorMessage());
-                deployment.setStatus(attempts >= MAX_ATTEMPTS_BEFORE_ESCALATION
-                        ? DeploymentStatus.FAILED_REQUIRES_ATTENTION.name()
-                        : DeploymentStatus.FAILED.name());
-                log.warn("Workflow start failed for deployment {} (attempt {}): {}", deploymentId, attempts, result.errorMessage());
-            }
-        }
 
-        deployment.setUpdatedAt(now);
-        stepRepository.save(step);
-        deploymentRepository.save(deployment);
+            deployment.setUpdatedAt(now);
+            stepRepository.save(step);
+            deploymentRepository.save(deployment);
+            if (eventType != null) {
+                writeOutboxEvent(deployment, eventType, step.getLastError());
+            }
+        });
     }
 
     public Mono<DeploymentResponse> getDeployment(String deploymentId) {
@@ -235,7 +288,7 @@ public class DeploymentService {
 
     /** Best-effort Zeebe cancellation (master spec §8) — failure to reach the broker never fails the API call. */
     public Mono<DeploymentResponse> cancelDeployment(String deploymentId) {
-        return Mono.fromCallable(() -> {
+        return Mono.fromCallable(() -> transactionTemplate.execute(status -> {
                     Deployment deployment = deploymentRepository.findById(deploymentId)
                             .orElseThrow(() -> NotFoundException.deployment(deploymentId));
                     if (DeploymentStatus.valueOf(deployment.getStatus()).isTerminal()) {
@@ -245,8 +298,9 @@ public class DeploymentService {
                     deployment.setStatus(DeploymentStatus.CANCELLED.name());
                     deployment.setUpdatedAt(Instant.now());
                     deploymentRepository.save(deployment);
+                    writeOutboxEvent(deployment, DeploymentEventType.CANCELLED, null);
                     return deployment.getWorkflowInstanceId();
-                })
+                }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(workflowService::cancelBestEffort)
                 .then(loadResponse(deploymentId));
