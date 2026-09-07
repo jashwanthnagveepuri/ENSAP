@@ -42,7 +42,15 @@ public class OutboxPublisher {
 
     @Scheduled(fixedDelayString = "${deployment.outbox.poll-interval-ms:2000}")
     public void publishPending() {
-        List<OutboxEvent> pending = outboxEventRepository.findTop100ByPublishedAtIsNullOrderByCreatedAtAsc();
+        List<OutboxEvent> pending;
+        try {
+            pending = outboxEventRepository.findTop100ByPublishedAtIsNullOrderByCreatedAtAsc();
+        } catch (Exception e) {
+            // A transient DB blip (or the datasource going away, e.g. at shutdown) just means
+            // this poll is skipped — the next one retries, same at-least-once story as publishOne.
+            log.warn("Failed to poll outbox_event; will retry next poll: {}", e.toString());
+            return;
+        }
         for (OutboxEvent event : pending) {
             publishOne(event);
         }
