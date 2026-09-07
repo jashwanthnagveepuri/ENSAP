@@ -28,6 +28,12 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: services/${{ matrix.service }}/pom.xml
+      - name: Install shared/event-contracts
+        # deployment-service/evidence-audit-service depend on this as a regular Maven
+        # <dependency> (Phase 3, master spec §10) — each matrix job is its own runner
+        # with no shared local repo, so it needs installing before the service's own
+        # standalone mvnw build can resolve it (see the root pom.xml's description).
+        run: mvn -q -B -DskipTests install -pl shared/event-contracts
       - name: Build & test
         working-directory: services/${{ matrix.service }}
         run: ./mvnw -B verify
