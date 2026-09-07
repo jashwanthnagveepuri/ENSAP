@@ -1,15 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { listDeployments, type Deployment, type DeploymentStatus } from '../../api/deployment'
+import { listAuditEvents, type AuditEvent } from '../../api/auditEvent'
 
-const STATUSES: DeploymentStatus[] = ['REQUESTED', 'RUNNING', 'COMPLETED', 'FAILED', 'FAILED_REQUIRES_ATTENTION', 'CANCELLED']
 const PAGE_SIZE = 20
 
-export default function DeploymentHistory() {
-  const [status, setStatus] = useState('')
+/**
+ * FR-4 audit trail (master spec §5). Lists audit events recorded by
+ * evidence-audit-service's Kafka-consumer pipeline — contract-first
+ * against docs/10-api-design.md + docs/11-event-catalog.md, best-effort
+ * while that consumer is still being wired up on the backend.
+ */
+export default function AuditHistory() {
   const [siteId, setSiteId] = useState('')
+  const [deploymentId, setDeploymentId] = useState('')
   const [page, setPage] = useState(0)
-  const [deployments, setDeployments] = useState<Deployment[]>([])
+  const [events, setEvents] = useState<AuditEvent[]>([])
   const [totalElements, setTotalElements] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -17,48 +21,46 @@ export default function DeploymentHistory() {
   useEffect(() => {
     setLoading(true)
     setError(null)
-    listDeployments({ status: status || undefined, siteId: siteId || undefined, page, size: PAGE_SIZE })
+    listAuditEvents({ siteId: siteId || undefined, deploymentId: deploymentId || undefined, page, size: PAGE_SIZE })
       .then((result) => {
-        setDeployments(result.content)
+        setEvents(result.content)
         setTotalElements(result.totalElements)
       })
       .catch((err) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setLoading(false))
-  }, [status, siteId, page])
+  }, [siteId, deploymentId, page])
 
   const lastPage = Math.max(0, Math.ceil(totalElements / PAGE_SIZE) - 1)
 
   return (
     <section>
-      <h1>Deployment History</h1>
+      <h1>Audit History</h1>
       <form onSubmit={(e) => e.preventDefault()}>
         <label>
           Site ID{' '}
           <input value={siteId} onChange={(e) => { setSiteId(e.target.value); setPage(0) }} />
         </label>{' '}
         <label>
-          Status{' '}
-          <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(0) }}>
-            <option value="">All</option>
-            {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
+          Deployment ID{' '}
+          <input value={deploymentId} onChange={(e) => { setDeploymentId(e.target.value); setPage(0) }} />
         </label>
       </form>
 
       {loading && <p>Loading…</p>}
-      {error && <p role="alert">Failed to load deployments: {error}</p>}
+      {error && <p role="alert">Failed to load audit events: {error}</p>}
 
       {!error && (
         <table>
-          <thead><tr><th>ID</th><th>Site</th><th>Status</th><th>Created</th><th>Updated</th></tr></thead>
+          <thead><tr><th>ID</th><th>Deployment</th><th>Site</th><th>Actor</th><th>Event type</th><th>Created</th></tr></thead>
           <tbody>
-            {deployments.map((d) => (
-              <tr key={d.id}>
-                <td><Link to={`/deployments/${d.id}/progress`}>{d.id}</Link></td>
-                <td>{d.siteId}</td>
-                <td>{d.status}</td>
-                <td>{d.createdAt}</td>
-                <td>{d.updatedAt}</td>
+            {events.map((event) => (
+              <tr key={event.id}>
+                <td>{event.id}</td>
+                <td>{event.deploymentId}</td>
+                <td>{event.siteId}</td>
+                <td>{event.actor}</td>
+                <td>{event.eventType}</td>
+                <td>{event.createdAt}</td>
               </tr>
             ))}
           </tbody>
