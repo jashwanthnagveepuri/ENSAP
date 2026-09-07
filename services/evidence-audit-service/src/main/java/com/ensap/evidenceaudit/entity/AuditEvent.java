@@ -4,12 +4,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
 /**
- * Maps the {@code audit_event} table (docs/09-database-design.md). Phase 0:
- * schema shape only.
+ * Maps the {@code audit_event} table (docs/09-database-design.md). Recorded
+ * by {@code DeploymentEventConsumer} for every deployment.* Kafka event
+ * (master spec §37 Phase 3).
  */
 @Entity
 @Table(name = "audit_event")
@@ -29,6 +32,11 @@ public class AuditEvent {
 
     @Column(name = "event_type", nullable = false)
     private String eventType;
+
+    /** Raw JSON text of the source event's payload; jsonb via Hibernate 6's native JSON type. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private String details;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -71,6 +79,14 @@ public class AuditEvent {
 
     public void setEventType(String eventType) {
         this.eventType = eventType;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+
+    public void setDetails(String details) {
+        this.details = details;
     }
 
     public Instant getCreatedAt() {
