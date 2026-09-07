@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.20.xsd">
+
+    <!-- Phase 3: deployment-service and evidence-audit-service share one
+         physical Postgres (infrastructure/docker/docker-compose.yml), and
+         evidence-audit-service's 001-evidence-audit-tables.xml already owns
+         a table named processed_operation (actively used by its Kafka
+         consumer for dedup). deployment-service's same-named table from
+         002-workflow-and-idempotency.xml has zero writers (Phase 4 scaffold
+         only), so it's the one that moves. Renaming rather than editing the
+         shipped 002 changeset, which would break checksums on any DB that
+         already applied it. -->
+    <changeSet id="003-01-rename-processed-operation" author="ensap-phase3">
+        <renameTable oldTableName="processed_operation" newTableName="deployment_processed_operation"/>
+        <!-- Postgres does NOT rename a table's auto-named primary key
+             constraint (or its backing index) on RENAME TABLE, so without
+             this the pkey stays "processed_operation_pkey" and still
+             collides with evidence-audit-service's own processed_operation
+             table on the shared Postgres instance (index/constraint names
+             are unique per-schema in Postgres, independent of table name).
+             Verified empirically: RENAME CONSTRAINT renames the backing
+             index too, so one statement is enough. -->
+        <sql dbms="postgresql">
+            ALTER TABLE deployment_processed_operation RENAME CONSTRAINT processed_operation_pkey TO deployment_processed_operation_pkey;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

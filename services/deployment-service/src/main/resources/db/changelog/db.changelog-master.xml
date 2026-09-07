@@ -13,4 +13,9 @@
          processed_operation scaffold (docs/09-database-design.md). -->
     <include file="db/changelog/002-workflow-and-idempotency.xml" relativeToChangelogFile="false"/>
 
+    <!-- Phase 3: rename processed_operation -> deployment_processed_operation
+         to avoid a cross-service table-name collision with
+         evidence-audit-service on the shared Postgres instance. -->
+    <include file="db/changelog/003-rename-processed-operation.xml" relativeToChangelogFile="false"/>
+
 </databaseChangeLog>

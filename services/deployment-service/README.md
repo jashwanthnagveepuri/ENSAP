@@ -47,9 +47,12 @@ workflow (master spec §37).
   built first out-of-band — the same reason `site-profile-service`
   (the Phase 1 reference) doesn't consume it either. Revisit once a
   root aggregator POM (or a published/installed artifact) exists.
-- **`processed_operation` table is schema-only**, same status as
-  `outbox_event` — Phase 4 job workers populate/consult it for
-  per-operation idempotency (master spec §12).
+- **`deployment_processed_operation` table is schema-only**, same status
+  as `outbox_event` — Phase 4 job workers populate/consult it for
+  per-operation idempotency (master spec §12). Renamed from
+  `processed_operation` (003-rename-processed-operation.xml) because
+  evidence-audit-service already owns a table of that name on the same
+  shared Postgres instance.
 
 ## Run locally
 
